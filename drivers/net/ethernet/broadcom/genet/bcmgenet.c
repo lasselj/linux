@@ -93,7 +93,7 @@ static inline int classify_ptp_raw_local(struct sk_buff *skb)
 		{
 			//K.J. - should only time stamp SYNC_MESSAGE(0), PATH_DELAY_REQ_MESSAGE(2), and PATH_DELAY_RESP_MESSAGE(3)
 			//Kyle - should differentiate between PTP_CLASS_V2 & PTP_CLASS_V1, but PTP_CLASS_V2 is most likely
-			if( ((hdr->tsmt & 0x0f) == 0) || ((hdr->tsmt & 0x0f) == 2) || ((hdr->tsmt & 0x0f) == 3) )
+			if((hdr->tsmt & 0x0f) < 4)
 			{ return PTP_CLASS_V2_L2; }
 		}		
 	}

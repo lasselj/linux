@@ -271,9 +271,9 @@ static void tx_timestamp_work(struct work_struct *w)
 		
 		if(msgtype == 0)
 		{ list_ptr = &priv->tx_fifo_sync; PTP_Message_Type_String = "SYNC"; }
-		else if(msgtype == 2)
+		else if(msgtype == 2 || msgtype == 1)
 		{ list_ptr = &priv->tx_fifo_pd_request; PTP_Message_Type_String = "PD_REQUEST"; }
-		else if(msgtype == 3)
+		else if(msgtype == 3 || msgtype == 9)
 		{ list_ptr = &priv->tx_fifo_pd_response;  PTP_Message_Type_String = "PD_RESPONSE";}
 
 		if(list_ptr != NULL)
@@ -415,18 +415,18 @@ static void bcm54210pe_get_fifo (struct work_struct *w)
 		{ 
 			if(msgtype == 0)
 			{ list_ptr = &priv->tx_fifo_sync; }
-			else if(msgtype == 2)
+			else if(msgtype == 2 || msgtype == 1)
 			{ list_ptr = &priv->tx_fifo_pd_request; }
-			else if(msgtype == 3)
+			else if(msgtype == 3 || msgtype == 9)
 			{ list_ptr = &priv->tx_fifo_pd_response; }
 		}
 		else
 		{
 			if(msgtype == 0)
 			{ list_ptr = &priv->rx_fifo_sync; }
-			else if(msgtype == 2)
+			else if(msgtype == 2 || msgtype == 1)
 			{ list_ptr = &priv->rx_fifo_pd_request; }
-			else if(msgtype == 3)
+			else if(msgtype == 3 || msgtype == 9)
 			{ list_ptr = &priv->rx_fifo_pd_response; }
 		}
 		
@@ -436,7 +436,7 @@ static void bcm54210pe_get_fifo (struct work_struct *w)
 		}
 		else
 		{		
-			printk("NEW TIMESTAMP - Error 1\n");
+			printk("NEW TIMESTAMP - Error 1: %i\n",msgtype);
 		}
 	
 		if(list_ptr != NULL && item != NULL)
@@ -660,7 +660,7 @@ static int bcm54210pe_adjfine(struct ptp_clock_info *info, long scaled_ppm)
 
 	adj = scaled_ppm;
 	adj <<= 13;
-	adj = div_u64(adj, 15625);
+	//adj = div_u64(adj, 15625);
 
 	hi = (adj >> 16);
 	lo = adj & 0xffff;
