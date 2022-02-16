@@ -579,16 +579,14 @@ static int bcm54210pe_gettime(struct ptp_clock_info *info, struct timespec64 *ts
 	struct bcm54210pe_ptp *ptp = container_of(info, struct bcm54210pe_ptp, caps);
 	struct phy_device *phydev = ptp->chosen->phydev;
 
-	//mutex_lock(&ptp->clock_lock);
-	
-	phy_lock_mdio_bus(phydev);
+	mutex_lock(&ptp->clock_lock);
 	
 	// Trigger sync which will capture the heartbeat counter
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF000);
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF020);
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF000);
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF020);
 
 	// Set Heart beat time read start
-	__bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x400);
+	bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x400);
 	Time[4] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG4);
 	Time[3] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG3);
 	Time[2] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG2);
@@ -596,12 +594,10 @@ static int bcm54210pe_gettime(struct ptp_clock_info *info, struct timespec64 *ts
 	Time[0] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG0);
 	
 	// Set read end bit
-	__bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x800);
-	__bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x000);
+	bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x800);
+	bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x000);
 
-	phy_unlock_mdio_bus(phydev);
-	
-	//mutex_unlock(&ptp->clock_lock);
+	mutex_unlock(&ptp->clock_lock);
 	
 	u64 Time_Stamp_NS = ts_to_ns(Time);
 			
@@ -633,24 +629,22 @@ static int bcm54210pe_settime(struct ptp_clock_info *info,
 	var[1] = (int) (ts->tv_nsec & 0x0000FFFF00000) >> 16;
 	var[0] = (int) (ts->tv_nsec & 0x000000000FFFF); 
 
-	phy_lock_mdio_bus(phydev);
 
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF000);
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF000);
 
 	//Load Original Time Code Register
-	__bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_0, var[0]);
-	__bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_1, var[1]);
-	__bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_2, var[2]);
-	__bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_3, var[3]);
-	__bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_4, var[4]);
+	bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_0, var[0]);
+	bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_1, var[1]);
+	bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_2, var[2]);
+	bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_3, var[3]);
+	bcm_phy_write_exp(phydev, ORIGINAL_TIME_CODE_4, var[4]);
 
 	//Enable shadow register
-	__bcm_phy_write_exp(phydev, SHADOW_REG_CONTROL, 0x0000);
-	__bcm_phy_write_exp(phydev, SHADOW_REG_LOAD, 0x0400);
+	bcm_phy_write_exp(phydev, SHADOW_REG_CONTROL, 0x0000);
+	bcm_phy_write_exp(phydev, SHADOW_REG_LOAD, 0x0400);
 
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE020); //NCO Register 6 => Enable SYNC_OUT pulse train and Internal Syncout ad framesync
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE020); //NCO Register 6 => Enable SYNC_OUT pulse train and Internal Syncout ad framesync
 
-	phy_unlock_mdio_bus(phydev);
 
 	struct timespec64 ts_new;
 
@@ -688,19 +682,18 @@ static int bcm54210pe_adjfine(struct ptp_clock_info *info, long scaled_ppm)
         printk("HI: %u, LO: %u\n", hi, lo);
 
 	mutex_lock(&ptp->timeset_lock);
-	phy_lock_mdio_bus(phydev);
 
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE000);
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_1_MSB_REG, hi);	
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_1_LSB_REG, lo);
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE000);
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_1_MSB_REG, hi);	
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_1_LSB_REG, lo);
 
 	//Enable shadow register
-	__bcm_phy_write_exp(phydev, SHADOW_REG_CONTROL, 0x0000);
-	__bcm_phy_write_exp(phydev, SHADOW_REG_LOAD, 0x0340);
+	bcm_phy_write_exp(phydev, SHADOW_REG_CONTROL, 0x0000);
+	bcm_phy_write_exp(phydev, SHADOW_REG_LOAD, 0x0340);
+
 	//Force sync
-	__bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE020); 
+	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE020); 
 	
-	phy_unlock_mdio_bus(phydev);
 	
 finish:
 	mutex_unlock(&ptp->timeset_lock);
