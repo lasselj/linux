@@ -324,12 +324,19 @@ static int bcm54210pe_sw_reset(struct phy_device *phydev)
 	u16 err;
 	u16 aux;
         
+
 	err =  bcm_phy_write_exp(phydev, EXT_SOFTWARE_RESET, EXT_RESET1);
 	err = bcm_phy_read_exp(phydev, EXT_ENABLE_REG1);
+
+
         if (err < 0)
                 return err;
+
+
         err = bcm_phy_write_exp(phydev, EXT_SOFTWARE_RESET, EXT_RESET2);
 	aux = bcm_phy_read_exp(phydev, EXT_SOFTWARE_RESET);
+
+
         return err;
 }
 
@@ -360,9 +367,11 @@ static void bcm54210pe_get_fifo (struct work_struct *w)
 
 //	pr_err("Interrupt status 0x%04x", bcm_phy_read_exp(phydev, 0x85f));
 //	pr_err("TXRX_1588 counter %04x", bcm_phy_read_exp(phydev, 0x884));
+
 	while(bcm_phy_read_exp(phydev, 0x85f) & 2)
 	{		
 		// Flush out the FIFO
+
 		bcm_phy_write_exp(phydev, 0x885, 1);
 		
 		#define TX_TS_OFFSET_LSB	0x0834
@@ -562,6 +571,7 @@ static int bcm54210pe_config_1588(struct phy_device *phydev)
 
 	err =  bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF020); //NCO Register 6 => Enable SYNC_OUT pulse train and Internal Syncout ad framesync
 
+
 	/*printk("DEBUG: GPIO %d IRQ %d\n", 41, gpio_to_irq(41));
 	  err = request_threaded_irq(gpio_to_irq(41), NULL, bcm54210pe_handle_interrupt,
 	  IRQF_ONESHOT | IRQF_SHARED,
@@ -587,11 +597,11 @@ static int bcm54210pe_gettime(struct ptp_clock_info *info, struct timespec64 *ts
 
 	// Set Heart beat time read start
 	bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x400);
-	Time[4] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG4);
-	Time[3] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG3);
-	Time[2] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG2);
-	Time[1] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG1);
-	Time[0] = __bcm_phy_read_exp(phydev, HEART_BEAT_REG0);
+	Time[4] = bcm_phy_read_exp(phydev, HEART_BEAT_REG4);
+	Time[3] = bcm_phy_read_exp(phydev, HEART_BEAT_REG3);
+	Time[2] = bcm_phy_read_exp(phydev, HEART_BEAT_REG2);
+	Time[1] = bcm_phy_read_exp(phydev, HEART_BEAT_REG1);
+	Time[0] = bcm_phy_read_exp(phydev, HEART_BEAT_REG0);
 	
 	// Set read end bit
 	bcm_phy_write_exp(phydev, CTR_DBG_REG, 0x800);
@@ -626,9 +636,10 @@ static int bcm54210pe_settime(struct ptp_clock_info *info,
 	var[4] = (int) (ts->tv_sec & 0xFFFF00000000) >> 32;
 	var[3] = (int) (ts->tv_sec & 0x0000FFFF0000) >> 16; 
 	var[2] = (int) (ts->tv_sec & 0x00000000FFFF);
-	var[1] = (int) (ts->tv_nsec & 0x0000FFFF0000) >> 16;
-	var[0] = (int) (ts->tv_nsec & 0x00000000FFFF); 
+	var[1] = (int) (ts->tv_nsec & 0x0000FFFF00000) >> 16;
+	var[0] = (int) (ts->tv_nsec & 0x000000000FFFF); 
 
+	mutex_lock(&ptp->timeset_lock);
 
 	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF000);
 
@@ -645,6 +656,7 @@ static int bcm54210pe_settime(struct ptp_clock_info *info,
 
 	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE020); //NCO Register 6 => Enable SYNC_OUT pulse train and Internal Syncout ad framesync
 
+	mutex_unlock(&ptp->clock_lock);
 
 	struct timespec64 ts_new;
 
@@ -680,6 +692,8 @@ static int bcm54210pe_adjfine(struct ptp_clock_info *info, long scaled_ppm)
 	lo = adj & 0xffff;
 
         printk("HI: %u, LO: %u\n", hi, lo);
+        hi >>= 2;
+        printk("(after shift) HI: %u, LO: %u\n", hi, lo);
 
 	mutex_lock(&ptp->timeset_lock);
 
@@ -695,8 +709,9 @@ static int bcm54210pe_adjfine(struct ptp_clock_info *info, long scaled_ppm)
 	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xE020); 
 	
 	
-finish:
 	mutex_unlock(&ptp->timeset_lock);
+
+finish:
 	return err;
 
 }
@@ -711,10 +726,10 @@ static int bcm54210pe_adjtime(struct ptp_clock_info *info, s64 delta)
 	struct timespec64 ts;
 	u64 now;
 
-	struct bcm54210pe_ptp *ptp = container_of(info, struct bcm54210pe_ptp, caps);
-	struct phy_device *phydev = ptp->chosen->phydev;
+	//struct bcm54210pe_ptp *ptp = container_of(info, struct bcm54210pe_ptp, caps);
+	//struct phy_device *phydev = ptp->chosen->phydev;
 
-	mutex_lock(&ptp->timeset_lock);
+	//mutex_lock(&ptp->timeset_lock);
 
 	err = bcm54210pe_gettime(info, &ts);
 	if (err < 0)
@@ -726,7 +741,7 @@ static int bcm54210pe_adjtime(struct ptp_clock_info *info, s64 delta)
 	err = bcm54210pe_settime(info, &ts);
 
 finish:
-	mutex_unlock(&ptp->timeset_lock);
+	//mutex_unlock(&ptp->timeset_lock);
 	return err;
 }
 
