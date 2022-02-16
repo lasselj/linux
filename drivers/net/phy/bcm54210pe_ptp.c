@@ -626,8 +626,8 @@ static int bcm54210pe_settime(struct ptp_clock_info *info,
 	var[4] = (int) (ts->tv_sec & 0xFFFF00000000) >> 32;
 	var[3] = (int) (ts->tv_sec & 0x0000FFFF0000) >> 16; 
 	var[2] = (int) (ts->tv_sec & 0x00000000FFFF);
-	var[1] = (int) (ts->tv_nsec & 0x0000FFFF00000) >> 16;
-	var[0] = (int) (ts->tv_nsec & 0x000000000FFFF); 
+	var[1] = (int) (ts->tv_nsec & 0x0000FFFF0000) >> 16;
+	var[0] = (int) (ts->tv_nsec & 0x00000000FFFF); 
 
 
 	bcm_phy_write_exp(phydev, NSE_DPPL_NCO_6_REG, 0xF000);
